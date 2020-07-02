@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:js' as js;
-import 'dart:js_util' as util;
 import 'dart:typed_data';
 
 import 'package:file/file.dart';
@@ -12,74 +12,94 @@ class CacheFile implements def.CacheFile, IOSink {
   js.JsObject _cache;
   String _name;
 
-  static final js.JsObject nameOptions = js.JsObject.jsify(<String, dynamic>{
+  static final js.JsObject nameOptions = js.JsObject.jsify({
     'ignoreSearch': true,
     'ignoreMethod': true,
     'ignoreVary': true,
   });
 
   CacheFile(js.JsObject cache, String name) {
-    print('CacheFile $name');
     _cache = cache;
     _name = name;
   }
 
   @override
   Future<bool> exists() async {
-    print('exists $_name');
     // JS: return await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true}) != undefined;
-    final js.JsObject response = await util.promiseToFuture<js.JsObject>(_cache.callMethod('match', <dynamic>[_name, nameOptions]));
+    final promise = _cache.callMethod('match', [_name, nameOptions]);
+    final response = await _toFuture<js.JsObject>(promise);
     return response != null;
   }
 
   @override
   Future<void> delete() async {
-    print('delete $_name');
     // JS: return await cache.delete(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
-    final result = await util.promiseToFuture<bool>(_cache.callMethod('delete', <dynamic>[_name, nameOptions]));
+    final promise = _cache.callMethod('delete', [_name, nameOptions]);
+    final result = await _toFuture<bool>(promise);
   }
 
   @override
   Future<void> createParent() {
-    print('createParent $_name');
   }
 
   @override
   IOSink openWrite() {
-    print('openWrite $_name');
     return this;
   }
 
   @override
   Future writeAsBytes(Uint8List bytes) async {
-    print('writeAsBytes $_name ${bytes.length}');
+print('writeAsBytes start');
     // JS: var blob = new Blob([bytes], {type : mime});
-    final js.JsArray array = js.JsArray.from(bytes);
-    final js.JsObject options1 = js.JsObject.jsify(<String, dynamic>{
+    final array = js.JsObject.jsify([bytes]);
+    final options1 = js.JsObject.jsify({
       'mime': 'application/octet-stream',
     });
-    final js.JsObject blob = js.JsObject(js.context['Blob'], <dynamic>[array, options1]);
+    final blob = js.JsObject(js.context['Blob'], [array, options1]);
+
     // JS: var options = {headers: {'Content-Type': mime, 'Content-Length': bytes.length}};
-    final js.JsObject options2 = js.JsObject.jsify(<String, dynamic>{
-      'headers': <String, dynamic>{
+    final options2 = js.JsObject.jsify({
+      'headers': {
         'Content-Type': 'application/octet-stream',
         'Content-Length': bytes.length,
       },
     });
+
     // JS: await cache.put(path, new Response(blob, options));
-    final js.JsObject response = js.JsObject(js.context['Response'], <dynamic>[blob, options2]);
-    await util.promiseToFuture<js.JsObject>(_cache.callMethod('put', <dynamic>[_name, response]));
-    return null;
+    final response = js.JsObject(js.context['Response'], [blob, options2]);
+    final promise = _cache.callMethod('put', [_name, response]);
+    await _toFuture(promise);
+print('writeAsBytes end');
   }
 
   @override
   Future<Uint8List> readAsBytes() async {
-    print('readAsBytes $_name');
-    // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
-    final js.JsObject response = await util.promiseToFuture<js.JsObject>(_cache.callMethod('match', <dynamic>[_name, nameOptions]));
-    // JS: return data.arrayBuffer();
-    final data = await util.promiseToFuture<ByteBuffer>(response.callMethod('arrayBuffer'));
-    return data.asUint8List();
+print('readAsBytes start');
+    try {
+      // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
+      final promise1 = _cache.callMethod('match', [_name, nameOptions]);
+      final response = await _toFuture<js.JsObject>(promise1);
+  
+      // JS: return data.arrayBuffer();
+      final promise2 = response.callMethod('arrayBuffer');
+      final data = await _toFuture<ByteBuffer>(promise2);
+print('data ${data.lengthInBytes}');
+      return data.asUint8List();
+    }
+    catch (e) {
+      print(e);
+    }
+    finally {
+print('readAsBytes end');
+    }
+  }
+
+  Future<T> _toFuture<T>(js.JsObject promise) {
+    final completer = Completer<T>();
+    promise.callMethod('then', [
+      (result) => completer.complete(result),
+    ]);
+    return completer.future;
   }
 
   //*** IOSink
@@ -89,18 +109,16 @@ class CacheFile implements def.CacheFile, IOSink {
 
   @override
   void add(List<int> data) {
-    print('sink.add');
     writeAsBytes(Uint8List.fromList(data));
   }
 
   @override
   void addError(Object error, [StackTrace stackTrace]) {
-    print('sink.addError $error');
+    print('addError $error');
   }
 
   @override
   Future addStream(Stream<List<int>> stream) async {
-    print('sink.addStream');
     stream.listen(add);
   }
 
