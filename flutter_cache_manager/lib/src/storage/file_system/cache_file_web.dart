@@ -53,14 +53,13 @@ class CacheFile implements def.CacheFile, IOSink {
   Future writeAsBytes(Uint8List bytes) async {
     await lock.synchronized(() async {
       // JS: var blob = new Blob([bytes], {type : mime});
-      final array = js.JsObject.jsify([bytes]);
-      final options1 = js.JsObject.jsify({
-        'mime': 'image/*',
-      });
-      final blob = js.JsObject(js.context['Blob'], [array, options1]);
+      final blob = js.JsObject(js.context['Blob'], [
+        js.JsObject.jsify([bytes]),
+        js.JsObject.jsify({'mime': 'image/*'}),
+      ]);
   
       // JS: var options = {headers: {'Content-Type': mime, 'Content-Length': bytes.length}};
-      final options2 = js.JsObject.jsify({
+      final options = js.JsObject.jsify({
         'headers': {
           'Content-Type': 'image/*',
           'Content-Length': bytes.length,
@@ -68,7 +67,7 @@ class CacheFile implements def.CacheFile, IOSink {
       });
   
       // JS: await cache.put(path, new Response(blob, options));
-      final response = js.JsObject(js.context['Response'], [blob, options2]);
+      final response = js.JsObject(js.context['Response'], [blob, options]);
       final promise = _cache.callMethod('put', [_name, response]);
       await _toFuture(promise);
     });
@@ -77,32 +76,33 @@ class CacheFile implements def.CacheFile, IOSink {
   @override
   Future<Uint8List> readAsBytes() async {
     return await lock.synchronized(() async {
-      try {
-        print('readAsBytes start');
-        // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
-        final promise1 = _cache.callMethod('match', [_name, nameOptions]);
-        final response = await _toFuture<js.JsObject>(promise1);
-        print(response);
-    
-        // JS: return data.arrayBuffer();
-        final promise2 = response.callMethod('arrayBuffer');
-        final data = await _toFuture<ByteBuffer>(promise2);
-        print('data ${data.lengthInBytes}');
-        return data.asUint8List();
-      }
-      catch (e) {
-        print(e);
-      }
-      finally {
-        print('readAsBytes end');
-      }
+      // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
+      final promise1 = _cache.callMethod('match', [_name, nameOptions]);
+      final response = await _toFuture<js.JsObject>(promise1);
+  
+      // JS: return await data.arrayBuffer();
+      // arrayBuffer() would be simpler but doesn't work?
+      // final promise2 = response.callMethod('arrayBuffer', []);
+      // final data = await _toFuture<ByteBuffer>(promise2);
+      // return data.asUint8List();
+      final promise2 = response.callMethod('blob', []);
+      final data = await _toFuture<html.Blob>(promise2);
+      return await _getBlobData(data);
     });
+  }
+
+  Future<Uint8List> _getBlobData(html.Blob blob) {
+    final completer = Completer<Uint8List>();
+    final reader = html.FileReader();
+    reader.readAsArrayBuffer(blob);
+    reader.onLoad.listen((_) => completer.complete(reader.result));
+    return completer.future;
   }
 
   Future<T> _toFuture<T>(js.JsObject promise) {
     final completer = Completer<T>();
     promise.callMethod('then', [
-      (result) => completer.complete(result),
+      (result) => completer.complete(result)
     ]);
     return completer.future;
   }
