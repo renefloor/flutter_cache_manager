@@ -27,8 +27,7 @@ class CacheFile implements def.CacheFile, IOSink {
   @override
   Future<bool> exists() async {
     print('exists $_name');
-    // JS: var options = {ignoreSearch: true, ignoreMethod: true, ignoreVary: true};
-    // JS: return await cache.match(name, options) != undefined;
+    // JS: return await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true}) != undefined;
     final js.JsObject response = await util.promiseToFuture<js.JsObject>(_cache.callMethod('match', <dynamic>[_name, nameOptions]));
     return response != null;
   }
@@ -36,8 +35,7 @@ class CacheFile implements def.CacheFile, IOSink {
   @override
   Future<void> delete() async {
     print('delete $_name');
-    // JS: var options = {ignoreSearch: true, ignoreMethod: true, ignoreVary: true};
-    // JS: return await cache.delete(name, options);
+    // JS: return await cache.delete(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
     final result = await util.promiseToFuture<bool>(_cache.callMethod('delete', <dynamic>[_name, nameOptions]));
   }
 
@@ -77,8 +75,7 @@ class CacheFile implements def.CacheFile, IOSink {
   @override
   Future<Uint8List> readAsBytes() async {
     print('readAsBytes $_name');
-    // JS: var options = {ignoreSearch: true, ignoreMethod: true, ignoreVary: true};
-    // JS: var data = await cache.match(name, options);
+    // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
     final js.JsObject response = await util.promiseToFuture<js.JsObject>(_cache.callMethod('match', <dynamic>[_name, nameOptions]));
     // JS: return data.arrayBuffer();
     final data = await util.promiseToFuture<ByteBuffer>(response.callMethod('arrayBuffer'));
