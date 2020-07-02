@@ -95,12 +95,13 @@ class CacheFile implements def.CacheFile, IOSink {
 
   @override
   void addError(Object error, [StackTrace stackTrace]) {
-    print('sink.addError');
+    print('sink.addError $error');
   }
 
   @override
-  Future addStream(Stream<List<int>> stream) {
-    throw UnimplementedError();
+  Future addStream(Stream<List<int>> stream) async {
+    print('sink.addStream');
+    stream.listen(add);
   }
 
   @override
