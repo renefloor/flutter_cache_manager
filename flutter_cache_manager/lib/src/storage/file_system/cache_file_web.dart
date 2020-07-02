@@ -55,7 +55,7 @@ class CacheFile implements def.CacheFile, IOSink {
       // JS: var blob = new Blob([bytes], {type : mime});
       final blob = js.JsObject(js.context['Blob'], [
         js.JsObject.jsify([bytes]),
-        js.JsObject.jsify({'mime': 'image/*'}),
+        js.JsObject.jsify({'type': 'image/*'}),
       ]);
   
       // JS: var options = {headers: {'Content-Type': mime, 'Content-Length': bytes.length}};
