@@ -15,7 +15,7 @@ class Config implements def.Config {
         maxAgeCacheObject = maxAgeCacheObject ?? const Duration(days: 30),
         maxNrOfCacheObjects = maxNrOfCacheObjects ?? 200,
         repo = repo ?? NonStoringObjectProvider(),
-        fileSystem = fileSystem ?? WebFileSystem();
+        fileSystem = fileSystem ?? WebFileSystem(cacheKey);
 
   @override
   final CacheInfoRepository repo;
