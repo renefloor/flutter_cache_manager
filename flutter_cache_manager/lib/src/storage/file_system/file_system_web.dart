@@ -17,7 +17,6 @@ class WebFileSystem implements FileSystem {
   @override
   Future<CacheFile> createFile(String name) async {
     assert(name != null);
-    final js.JsObject cache = await _cache;
     return CacheFile(await _cache, name);
   }
 }
