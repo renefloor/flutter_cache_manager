@@ -53,14 +53,14 @@ print('writeAsBytes start');
     // JS: var blob = new Blob([bytes], {type : mime});
     final array = js.JsObject.jsify([bytes]);
     final options1 = js.JsObject.jsify({
-      'mime': 'application/octet-stream',
+      'mime': 'image/*',
     });
     final blob = js.JsObject(js.context['Blob'], [array, options1]);
 
     // JS: var options = {headers: {'Content-Type': mime, 'Content-Length': bytes.length}};
     final options2 = js.JsObject.jsify({
       'headers': {
-        'Content-Type': 'application/octet-stream',
+        'Content-Type': 'image/*',
         'Content-Length': bytes.length,
       },
     });
