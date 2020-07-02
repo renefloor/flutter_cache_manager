@@ -79,6 +79,7 @@ print('readAsBytes start');
       // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
       final promise1 = _cache.callMethod('match', [_name, nameOptions]);
       final response = await _toFuture<js.JsObject>(promise1);
+print(response);
   
       // JS: return data.arrayBuffer();
       final promise2 = response.callMethod('arrayBuffer');
