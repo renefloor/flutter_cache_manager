@@ -78,16 +78,16 @@ class CacheFile implements def.CacheFile, IOSink {
     return await lock.synchronized(() async {
       // JS: var data = await cache.match(name, {ignoreSearch: true, ignoreMethod: true, ignoreVary: true});
       final promise1 = _cache.callMethod('match', [_name, nameOptions]);
-      final response = await _toFuture<js.JsObject>(promise1);
+      final data = await _toFuture<js.JsObject>(promise1);
   
-      // JS: return await data.arrayBuffer();
-      // arrayBuffer() would be simpler but doesn't work?
-      // final promise2 = response.callMethod('arrayBuffer', []);
-      // final data = await _toFuture<ByteBuffer>(promise2);
-      // return data.asUint8List();
-      final promise2 = response.callMethod('blob', []);
-      final data = await _toFuture<html.Blob>(promise2);
-      return await _getBlobData(data);
+      // JS: return await data.arrayBuffer(); - would be simpler but I can't find a way to make it work.
+      // Normal Dart/JS interop has a way to coerce an ArrayBuffer to ByteBuffer but no way to do it manually: _toFuture<ByteBuffer>() DOES NOT work.
+      // final promise2 = data.callMethod('arrayBuffer', []);
+      // final buffer = await _toFuture<ByteBuffer>(promise2);
+      // return buffer.asUint8List();
+      final promise2 = data.callMethod('blob', []);
+      final blob = await _toFuture<html.Blob>(promise2);
+      return await _getBlobData(blob);
     });
   }
 
