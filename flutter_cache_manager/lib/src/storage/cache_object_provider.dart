@@ -14,27 +14,28 @@ class CacheObjectProvider implements CacheInfoRepository {
   Future open() async {
     db = await openDatabase(path, version: 3,
         onCreate: (Database db, int version) async {
-      await db.execute('''
-      create table $_tableCacheObject ( 
-        ${CacheObject.columnId} integer primary key, 
-        ${CacheObject.columnUrl} text, 
-        ${CacheObject.columnKey} text, 
-        ${CacheObject.columnPath} text,
-        ${CacheObject.columnETag} text,
-        ${CacheObject.columnValidTill} integer,
-        ${CacheObject.columnTouched} integer,
-        ${CacheObject.columnLength} integer
-        );
-        create unique index $_tableCacheObject${CacheObject.columnKey} 
-        ON $_tableCacheObject (${CacheObject.columnKey});
-      ''');
+      db.transaction((txn) async {
+        return await txn.execute('''
+              create table $_tableCacheObject ( 
+                ${CacheObject.columnId} integer primary key, 
+                ${CacheObject.columnUrl} text, 
+                ${CacheObject.columnKey} text, 
+                ${CacheObject.columnPath} text,
+                ${CacheObject.columnETag} text,
+                ${CacheObject.columnValidTill} integer,
+                ${CacheObject.columnTouched} integer,
+                ${CacheObject.columnLength} integer
+                );
+                create unique index $_tableCacheObject${CacheObject.columnKey} 
+                ON $_tableCacheObject (${CacheObject.columnKey});
+              ''');
+      });
     }, onUpgrade: (Database db, int oldVersion, int newVersion) async {
       // Migration for adding the optional key, does the following:
       // Adds the new column
       // Creates a unique index for the column
       // Migrates over any existing URLs to keys
       if (oldVersion <= 1) {
-
         await db.transaction((txn) async {
           await txn.execute('''
             alter table $_tableCacheObject 
@@ -52,10 +53,12 @@ class CacheObjectProvider implements CacheInfoRepository {
         });
       }
       if (oldVersion <= 2) {
-        await db.execute('''
-        alter table $_tableCacheObject 
-        add ${CacheObject.columnLength} integer;
-        ''');
+        await db.transaction((txn) async {
+          return await txn.execute('''
+                alter table $_tableCacheObject 
+                add ${CacheObject.columnLength} integer;
+                ''');
+        });
       }
     });
   }
@@ -71,7 +74,9 @@ class CacheObjectProvider implements CacheInfoRepository {
 
   @override
   Future<CacheObject> insert(CacheObject cacheObject) async {
-    var id = await db.insert(_tableCacheObject, cacheObject.toMap());
+    var id = await db.transaction((txn) async {
+      return await txn.insert(_tableCacheObject, cacheObject.toMap());
+    });
     return cacheObject.copyWith(id: id);
   }
 
@@ -87,20 +92,26 @@ class CacheObjectProvider implements CacheInfoRepository {
 
   @override
   Future<int> delete(int id) {
-    return db.delete(_tableCacheObject,
-        where: '${CacheObject.columnId} = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      return txn.delete(_tableCacheObject,
+          where: '${CacheObject.columnId} = ?', whereArgs: [id]);
+    });
   }
 
   @override
   Future deleteAll(Iterable<int> ids) {
-    return db.delete(_tableCacheObject,
-        where: '${CacheObject.columnId} IN (' + ids.join(',') + ')');
+    return db.transaction((txn) async {
+      return txn.delete(_tableCacheObject,
+          where: '${CacheObject.columnId} IN (' + ids.join(',') + ')');
+    });
   }
 
   @override
   Future<int> update(CacheObject cacheObject) {
-    return db.update(_tableCacheObject, cacheObject.toMap(),
-        where: '${CacheObject.columnId} = ?', whereArgs: [cacheObject.id]);
+    return db.transaction((txn) async {
+      return txn.update(_tableCacheObject, cacheObject.toMap(),
+          where: '${CacheObject.columnId} = ?', whereArgs: [cacheObject.id]);
+    });
   }
 
   @override
@@ -139,3 +150,4 @@ class CacheObjectProvider implements CacheInfoRepository {
   @override
   Future close() => db.close();
 }
+
